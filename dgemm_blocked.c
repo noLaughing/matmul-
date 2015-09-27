@@ -3,7 +3,7 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 #include <stdio.h>
 
 #ifndef BLOCK_SIZE
-#define BLOCK_SIZE ((int) 512)
+#define BLOCK_SIZE ((int) 256)
 #endif
 
 /*
@@ -21,9 +21,19 @@ void basic_dgemm(const int lda, const int M, const int N, const int K,
         for (j = 0; j < N; ++j) {
             double cij = C[j*lda+i];
             for (k = 0; k < K; ++k) {
-                cij += A[k*lda+i] * B[j*lda+k];
+                // swapped indices due to AT
+                cij += A[i*lda+k] * B[j*lda+k];
             }
             C[j*lda+i] = cij;
+        }
+    }
+}
+
+void transpose(const int dim, const double *A, double *AT) {
+    int i, j;
+    for (i = 0; i < dim; ++i) {
+        for (j = 0; j < dim; j++) {
+            AT[i + j*dim] = A[j + i*dim];
         }
     }
 }
@@ -77,6 +87,9 @@ void do_block(const int lda,
 
 void square_dgemm(const int M, const double *A, const double *B, double *C)
 {
+    double* AT = (double*) malloc(M * M * sizeof(double));
+    transpose(M, A, AT);
+    
     const int n_blocks = M / BLOCK_SIZE + (M%BLOCK_SIZE? 1 : 0);
     printf("Dimension %d has %d blocks\n", M, n_blocks);
     int bi, bj, bk;
@@ -93,17 +106,15 @@ void square_dgemm(const int M, const double *A, const double *B, double *C)
                                        * sizeof(double));
                 double* block_B = (double*) malloc(BLOCK_SIZE * BLOCK_SIZE
                                        * sizeof(double));
-                read_to_contiguous(M, A, block_A, i, k);
+                
+                // swapped indices due to AT
+                read_to_contiguous(M, AT, block_A, k, i);
                 read_to_contiguous(M, B, block_B, k, j);
                 
                 basic_dgemm(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE,
                             block_A, block_B, block_C);
-                            
-                free(block_A);
-                free(block_B);
             }
             write_block_to_original(M, block_C, C, i, j);
-            free(block_C);
         }
     }
 }
