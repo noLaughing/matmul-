@@ -16,7 +16,7 @@ const char* dgemm_desc = "Simple blocked dgemm.";
 void basic_dgemm(const int lda, const int M, const int N, const int K,
                  const double *A, const double *B, double *C)
 {
-	int i, j, k;
+    int i, j, k;
     for (i = 0; i < M; ++i) {
         for (j = 0; j < N; ++j) {
             double cij = C[j*lda+i];
@@ -39,8 +39,8 @@ void read_to_contiguous(const int M, const double *A, double *block_A,
     // offset is index of upper left corner of desired block within A
     const int offset = i + M*j;
     int m, n;
-    for (m = 0; m < mBound; ++m) {
-        for (n = 0; n < nBound; ++n) {
+    for (n = 0; n < nBound; ++n) {
+        for (m = 0; m < mBound; ++m) {
             block_A[m + BLOCK_SIZE*n] = A[offset + m + M*n];
         }
     }
@@ -56,8 +56,8 @@ void write_block_to_original(const int M, const double *block_C, double *C,
     
     int m, n;
     const int offset = i + M*j;
-    for (m = 0; m < mBound; ++m) {
-        for (n = 0; n < nBound; ++n) {
+    for (n = 0; n < nBound; ++n) {
+        for (m = 0; m < mBound; ++m) {
             C[offset + m + M*n] = block_C[m + BLOCK_SIZE*n];
         }
     }
@@ -84,22 +84,26 @@ void square_dgemm(const int M, const double *A, const double *B, double *C)
         const int i = bi * BLOCK_SIZE;
         for (bj = 0; bj < n_blocks; ++bj) {
             const int j = bj * BLOCK_SIZE;
-			double* block_C = (double*) malloc(BLOCK_SIZE * BLOCK_SIZE
+            double* block_C = (double*) malloc(BLOCK_SIZE * BLOCK_SIZE
                                        * sizeof(double));
             read_to_contiguous(M, C, block_C, i, j);
             for (bk = 0; bk < n_blocks; ++bk) {
                 const int k = bk * BLOCK_SIZE;
-				double* block_A = (double*) malloc(BLOCK_SIZE * BLOCK_SIZE
+                double* block_A = (double*) malloc(BLOCK_SIZE * BLOCK_SIZE
                                        * sizeof(double));
-				double* block_B = (double*) malloc(BLOCK_SIZE * BLOCK_SIZE
+                double* block_B = (double*) malloc(BLOCK_SIZE * BLOCK_SIZE
                                        * sizeof(double));
                 read_to_contiguous(M, A, block_A, i, k);
                 read_to_contiguous(M, B, block_B, k, j);
                 
                 basic_dgemm(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE,
                             block_A, block_B, block_C);
+                            
+                free(block_A);
+                free(block_B);
             }
             write_block_to_original(M, block_C, C, i, j);
+            free(block_C);
         }
     }
 }
